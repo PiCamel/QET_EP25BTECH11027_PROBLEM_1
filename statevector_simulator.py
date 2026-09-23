@@ -27,11 +27,19 @@ class StatevectorSimulator:
                 complex NumPy array of size 2**n.
         """
         self.num_qubits = num_qubits
+        # This seems sketchy, what does it mean to set the qubits to a deterministic value
         self.state = None  # initialize to |0...0>
 
     def x(self, qubit: int) -> None:
         """Apply the Pauli-X (NOT) gate to the given qubit."""
-        raise NotImplementedError
+        pauli_x = np.array([0,1],[1,0], dtype=complex)
+        # For now I'll just make the horribly computationally inefficient tensor product
+        U = np.identity(2, dtype=complex)
+        for i in range(1,self.num_qubits):
+            if (i==)
+            U = np.kron(U, np.identity(2))
+
+        # raise NotImplementedError
 
     def h(self, qubit: int) -> None:
         """Apply the Hadamard gate to the given qubit."""
