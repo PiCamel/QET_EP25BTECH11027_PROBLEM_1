@@ -32,22 +32,50 @@ class StatevectorSimulator:
 
     def x(self, qubit: int) -> None:
         """Apply the Pauli-X (NOT) gate to the given qubit."""
-        pauli_x = np.array([0,1],[1,0], dtype=complex)
+        pauli_x = np.array([0,1],[1,0], dtype=complex) # NOT
         # For now I'll just make the horribly computationally inefficient tensor product
-        U = np.identity(2, dtype=complex)
-        for i in range(1,self.num_qubits):
-            if (i==)
-            U = np.kron(U, np.identity(2))
+        U = np.identity(1, dtype=complex)
 
+        # Repeated tensor product that pisses me off because it's mostly I x I x ...
+        for i in range(0,self.num_qubits):
+            if (i==qubit): U = np.kron(U, pauli_x)
+            else: U = np.kron(U, np.identity(2))
+
+        self.state = U @ self.state
+        return None
         # raise NotImplementedError
 
     def h(self, qubit: int) -> None:
         """Apply the Hadamard gate to the given qubit."""
-        raise NotImplementedError
+        # I just copied the x implementation and replaced it with Hadamard :/
+        hadamard = np.array([1/np.sqrt(2),1/np.sqrt(2)],[1/np.sqrt(2),-1/np.sqrt(2)], dtype=complex) # H
+        # For now I'll just make the horribly computationally inefficient tensor product
+        U = np.identity(1, dtype=complex)
+
+        # Repeated tensor product that pisses me off because it's mostly I x I x ...
+        for i in range(0,self.num_qubits):
+            if (i==qubit): U = np.kron(U, hadamard)
+            else: U = np.kron(U, np.identity(2))
+
+        self.state = U @ self.state
+        return None
+        # raise NotImplementedError
 
     def z(self, qubit: int) -> None:
         """Apply the Pauli-Z gate to the given qubit."""
-        raise NotImplementedError
+        # Same thing as before >:(
+        pauli_z = np.array([1,0],[0,-1], dtype=complex) # Phase Flip (why phase hmmm)
+        # For now I'll just make the horribly computationally inefficient tensor product
+        U = np.identity(1, dtype=complex)
+
+        # Repeated tensor product that pisses me off because it's mostly I x I x ...
+        for i in range(0,self.num_qubits):
+            if (i==qubit): U = np.kron(U, pauli_z)
+            else: U = np.kron(U, np.identity(2))
+
+        self.state = U @ self.state
+        return None
+        # raise NotImplementedError
 
     def cnot(self, control: int, target: int) -> None:
         """Apply a CNOT gate with the given control and target qubits."""
