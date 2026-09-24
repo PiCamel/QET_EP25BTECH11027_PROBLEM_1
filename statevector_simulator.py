@@ -32,7 +32,7 @@ class StatevectorSimulator:
 
     def x(self, qubit: int) -> None:
         """Apply the Pauli-X (NOT) gate to the given qubit."""
-        pauli_x = np.array([0,1],[1,0], dtype=complex) # NOT
+        pauli_x = np.array([[0,1],[1,0]], dtype=complex) # NOT
         # For now I'll just make the horribly computationally inefficient tensor product
         U = np.identity(1, dtype=complex)
 
@@ -48,7 +48,7 @@ class StatevectorSimulator:
     def h(self, qubit: int) -> None:
         """Apply the Hadamard gate to the given qubit."""
         # I just copied the x implementation and replaced it with Hadamard :/
-        hadamard = np.array([1/np.sqrt(2),1/np.sqrt(2)],[1/np.sqrt(2),-1/np.sqrt(2)], dtype=complex) # H
+        hadamard = np.array([[1/np.sqrt(2),1/np.sqrt(2)],[1/np.sqrt(2),-1/np.sqrt(2)]], dtype=complex) # H
         # For now I'll just make the horribly computationally inefficient tensor product
         U = np.identity(1, dtype=complex)
 
@@ -64,7 +64,7 @@ class StatevectorSimulator:
     def z(self, qubit: int) -> None:
         """Apply the Pauli-Z gate to the given qubit."""
         # Same thing as before >:(
-        pauli_z = np.array([1,0],[0,-1], dtype=complex) # Phase Flip (why phase hmmm)
+        pauli_z = np.array([[1,0],[0,-1]], dtype=complex) # Phase Flip (why phase hmmm)
         # For now I'll just make the horribly computationally inefficient tensor product
         U = np.identity(1, dtype=complex)
 
@@ -79,7 +79,26 @@ class StatevectorSimulator:
 
     def cnot(self, control: int, target: int) -> None:
         """Apply a CNOT gate with the given control and target qubits."""
-        raise NotImplementedError
+        # when control qubit is 1, target bit inverts
+        # I'll reshape the statevector into a 2x2x2x...x2 tensor
+        # Then it's arranged so that element 0 in that axis corresponds to |0> for that qubit and element 1 to |1>
+        # Each qubit sits on an axis where only its values change
+
+        # Converts 1D statevector into nD state_tensor for ease of operations
+        # Axis i indexes qubit i's basis states
+        state_tensor = np.reshape(self.state, [2]*self.num_qubits)
+        # Might be worthwhile to flip entirely if control index is larger than target index, might reduce time complexity
+        if (control > target): state_tensor = np.flip(state_tensor); # Reverses order, will need to reverse again during final reshape
+        # ! IDEA: I will make sure control is "higher" priority than target,
+        # ! then go into the index 1 of control and then flip along the axis of the target bit
+        # ! only within that subarray of control being 1.
+
+        # ! Actually, it might be worthwhile just keeping control at bit 1 and target at bit 2
+        # ! but I'm not sure
+
+        # Stretch back into 1D
+        state_tensor = np.reshape(state_tensor, 2**self.num_qubits);
+        # raise NotImplementedError
 
     def cz(self, control: int, target: int) -> None:
         """Apply a controlled-Z gate with the given control and target qubits."""
