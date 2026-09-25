@@ -29,6 +29,8 @@ class StatevectorSimulator:
         self.num_qubits = num_qubits
         # This seems sketchy, what does it mean to set the qubits to a deterministic value
         self.state = None  # initialize to |0...0>
+        self.state = np.zeros(2**num_qubits, dtype=complex)
+        self.state[0] = 1
 
     def x(self, qubit: int) -> None:
         """Apply the Pauli-X (NOT) gate to the given qubit."""
@@ -43,7 +45,6 @@ class StatevectorSimulator:
 
         self.state = U @ self.state
         return None
-        # raise NotImplementedError
 
     def h(self, qubit: int) -> None:
         """Apply the Hadamard gate to the given qubit."""
@@ -59,7 +60,6 @@ class StatevectorSimulator:
 
         self.state = U @ self.state
         return None
-        # raise NotImplementedError
 
     def z(self, qubit: int) -> None:
         """Apply the Pauli-Z gate to the given qubit."""
@@ -75,34 +75,42 @@ class StatevectorSimulator:
 
         self.state = U @ self.state
         return None
-        # raise NotImplementedError
 
     def cnot(self, control: int, target: int) -> None:
         """Apply a CNOT gate with the given control and target qubits."""
-        # when control qubit is 1, target bit inverts
+        # When control qubit is 1, target bit inverts
         # I'll reshape the statevector into a 2x2x2x...x2 tensor
         # Then it's arranged so that element 0 in that axis corresponds to |0> for that qubit and element 1 to |1>
         # Each qubit sits on an axis where only its values change
-
         # Converts 1D statevector into nD state_tensor for ease of operations
         # Axis i indexes qubit i's basis states
+        # IDEA
+        # Go into the index 1 of control and then flip along the axis of the target bit
+
         state_tensor = np.reshape(self.state, [2]*self.num_qubits)
-        # Might be worthwhile to flip entirely if control index is larger than target index, might reduce time complexity
-        if (control > target): state_tensor = np.flip(state_tensor); # Reverses order, will need to reverse again during final reshape
-        # ! IDEA: I will make sure control is "higher" priority than target,
-        # ! then go into the index 1 of control and then flip along the axis of the target bit
-        # ! only within that subarray of control being 1.
+        # Instruction on how to slice the nD tensor: keeps indexes where control qubit = 1
+        indexes = [slice(None)]*self.num_qubits
+        indexes[control] = slice(1,2) # This isolates the part where control qubit = 1, maintains array shape
+        indexes = tuple(indexes) # Necessary for some reason
 
-        # ! Actually, it might be worthwhile just keeping control at bit 1 and target at bit 2
-        # ! but I'm not sure
-
+        # Now, to flip along the target axis where control = 1
+        state_tensor[indexes] = np.flip(state_tensor[indexes], axis=target)
         # Stretch back into 1D
-        state_tensor = np.reshape(state_tensor, 2**self.num_qubits);
-        # raise NotImplementedError
+        self.state = np.reshape(state_tensor, 2**self.num_qubits)
+        return None
 
     def cz(self, control: int, target: int) -> None:
         """Apply a controlled-Z gate with the given control and target qubits."""
-        raise NotImplementedError
+        # I think instead of applying a flip on the sliced array, I do the operation x = -x for the sliced part
+        state_tensor = np.reshape(self.state, [2]*self.num_qubits)
+        # Instruction on how to slice the nD tensor: keeps indexes where control qubit = 1 AND 
+        indexes = [slice(None)]*self.num_qubits
+        indexes[target] = indexes[control] = slice(1,2) # Isolates where control = 1 and target = 1
+        indexes = tuple(indexes)
+        # Now to apply x = -x
+        state_tensor[indexes] *= complex(-1.0)
+        self.state = np.reshape(state_tensor, 2**self.num_qubits)
+        return None
 
     def half_entropy(self) -> float:
         """
@@ -115,15 +123,17 @@ class StatevectorSimulator:
 
     def get_statevector(self) -> np.ndarray:
         """Return the current statevector as a NumPy array."""
-        raise NotImplementedError
+        return self.state
 
     def get_probabilities(self) -> np.ndarray:
         """Return the current probabilities as a Numpy array"""
-        raise NotImplementedError
+        return np.conjugate(self.state)*(self.state)
 
     def reset(self) -> None:
         """Reset the simulator back to the |0...0> state."""
-        raise NotImplementedError
+        self.state = np.zeros(2**self.num_qubits, dtype=complex)
+        self.state[0] = 1
+        return None
 
     def grover_2qubit(self, marked_state: int) -> None:
         """
