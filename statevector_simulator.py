@@ -119,8 +119,8 @@ class StatevectorSimulator:
         """
         # First I reshape the statevector into a square matrix, first n/2 qubits and second n/2 qubits
         n = self.num_qubits
-        s = self.num_qubits/2
-        mat = np.reshape(self.state, (2**s, 2**(n-s)))
+        s = self.num_qubits//2
+        mat = np.reshape(self.state, [2**s, 2**(n-s)])
 
         # I just implemented it from the original README, I've got little to no idea on how to "feel" it
         U, lambdas, Vdagger = np.linalg.svd(mat) # SVD
