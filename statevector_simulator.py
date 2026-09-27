@@ -41,7 +41,7 @@ class StatevectorSimulator:
         # Repeated tensor product that pisses me off because it's mostly I x I x ...
         for i in range(0,self.num_qubits):
             if (i==qubit): U = np.kron(U, pauli_x)
-            else: U = np.kron(U, np.identity(2))
+            else: U = np.kron(U, np.identity(2, dtype=complex))
 
         self.state = U @ self.state
         return None
@@ -56,7 +56,7 @@ class StatevectorSimulator:
         # Repeated tensor product that pisses me off because it's mostly I x I x ...
         for i in range(0,self.num_qubits):
             if (i==qubit): U = np.kron(U, hadamard)
-            else: U = np.kron(U, np.identity(2))
+            else: U = np.kron(U, np.identity(2, dtype=complex))
 
         self.state = U @ self.state
         return None
@@ -71,7 +71,7 @@ class StatevectorSimulator:
         # Repeated tensor product that pisses me off because it's mostly I x I x ...
         for i in range(0,self.num_qubits):
             if (i==qubit): U = np.kron(U, pauli_z)
-            else: U = np.kron(U, np.identity(2))
+            else: U = np.kron(U, np.identity(2, dtype=complex))
 
         self.state = U @ self.state
         return None
@@ -91,10 +91,9 @@ class StatevectorSimulator:
         # Instruction on how to slice the nD tensor: keeps indexes where control qubit = 1
         indexes = [slice(None)]*self.num_qubits
         indexes[control] = slice(1,2) # This isolates the part where control qubit = 1, maintains array shape
-        indexes = tuple(indexes) # Necessary for some reason
 
         # Now, to flip along the target axis where control = 1
-        state_tensor[indexes] = np.flip(state_tensor[indexes], axis=target)
+        state_tensor[tuple(indexes)] = np.flip(state_tensor[tuple(indexes)], axis=target)
         # Stretch back into 1D
         self.state = np.reshape(state_tensor, 2**self.num_qubits)
         return None
@@ -106,9 +105,8 @@ class StatevectorSimulator:
         # Instruction on how to slice the nD tensor: keeps indexes where control qubit = 1 AND 
         indexes = [slice(None)]*self.num_qubits
         indexes[target] = indexes[control] = slice(1,2) # Isolates where control = 1 and target = 1
-        indexes = tuple(indexes)
         # Now to apply x = -x
-        state_tensor[indexes] *= complex(-1.0)
+        state_tensor[tuple(indexes)] *= complex(-1.0)
         self.state = np.reshape(state_tensor, 2**self.num_qubits)
         return None
 
@@ -119,7 +117,17 @@ class StatevectorSimulator:
         Returns:
             The half-cut entanglement entropy in bits.
         """
-        raise NotImplementedError
+        # First I reshape the statevector into a square matrix, first n/2 qubits and second n/2 qubits
+        n = self.num_qubits
+        s = self.num_qubits/2
+        mat = np.reshape(self.state, (2**s, 2**(n-s)))
+
+        # I just implemented it from the original README, I've got little to no idea on how to "feel" it
+        U, lambdas, Vdagger = np.linalg.svd(mat) # SVD
+        prob = lambdas**2
+        prob = prob[prob > 0]
+        S = -np.sum(prob * np.log2(prob))
+        return S
 
     def get_statevector(self) -> np.ndarray:
         """Return the current statevector as a NumPy array."""
@@ -144,7 +152,54 @@ class StatevectorSimulator:
         Args:
             marked_state: Index (0 to 3) of the state the oracle marks.
         """
-        raise NotImplementedError
+        # From arXiv/quant-ph/9605043
+        # Grover's algorithm makes use of 3 steps:
+        # 1. Initialise vector = (2^(-n/2)) of 2^n elements (n=2)
+        self.h(0) # Applying H on first qubit
+        self.h(1) # Applying H on second qubit
+
+        # 2. The cheaty all knowing oracle -> flips state if equal to marked state
+        # Note: I can't think anymore
+        if marked_state == 0:
+            self.x(0)
+            self.x(1)
+            self.cz(0,1)
+            self.x(0)
+            self.x(1)
+        elif marked_state == 1:
+            self.x(0)
+            self.cz(0,1)
+            self.x(0)
+        elif marked_state == 2:
+            self.x(1)
+            self.cz(0,1)
+            self.x(1)
+        elif marked_state == 3:
+            self.cz(0,1)
+        else:
+            print("Boohoo, you don't have a valid key L.")
+            return None
+
+        # 3. Invert about mean of all states: U = -I + 2(1/N)_(2^n x 2^n); U = 2qubitH x (2|00><00| - I) x 2qubitH
+        # 2 qubit H
+        self.h(0)
+        self.h(1)
+
+        # 2|00><00| - I = diag(1,-1,-1,-1)
+        # Makes 00 -> 11
+        self.x(0)
+        self.x(1)
+        # Makes 11 -> -11
+        self.cz(0,1)
+        # Makes -11 -> -00
+        self.x(0)
+        self.x(1)
+
+        # 2 qubit H
+        self.h(0)
+        self.h(1)
+
+        return None
 
 
 if __name__ == "__main__":
@@ -158,3 +213,4 @@ if __name__ == "__main__":
     print("Final statevector:", final_state)
     print("Probabilities:", probabilities)
     print("Measured state:", np.argmax(probabilities))
+    print("Half Entropy:",simulator.half_entropy())
